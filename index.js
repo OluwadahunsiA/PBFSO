@@ -8,6 +8,7 @@ app.use(cors());
 
 app.use(express.json());
 app.use(morgan('combined'));
+app.use(express.static('dist'));
 
 let persons = [
   {
@@ -34,7 +35,7 @@ let persons = [
 
 app.get('/', (request, response) => {
   const content = `<h1>Welcome to the phonebook backend </h1>`;
-  response.send();
+  response.send(content);
 });
 
 app.get('/info', (reqeust, response) => {
