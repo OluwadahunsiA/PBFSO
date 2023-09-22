@@ -32,6 +32,11 @@ let persons = [
   },
 ];
 
+app.get('/', (request, response) => {
+  const content = `<h1>Welcome to the phonebook backend </h1>`;
+  response.send();
+});
+
 app.get('/info', (reqeust, response) => {
   const content = `<div> <p>Phonebook has record for ${
     persons.length
