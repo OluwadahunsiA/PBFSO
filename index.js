@@ -1,8 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
-const cors = require('cors');
-
 const app = express();
+const cors = require('cors');
+const Phone = require('./models/phonebook');
 
 app.use(cors());
 
@@ -10,90 +11,79 @@ app.use(express.json());
 app.use(morgan('combined'));
 app.use(express.static('dist'));
 
-let persons = [
-  {
-    id: 1,
-    name: 'Arto Hellas',
-    number: '040-123456',
-  },
-  {
-    id: 2,
-    name: 'Ada Lovelace',
-    number: '39-44-5323523',
-  },
-  {
-    id: 3,
-    name: 'Dan Abramov',
-    number: '12-43-234345',
-  },
-  {
-    id: 4,
-    name: 'Mary Poppendieck',
-    number: '39-23-6423122',
-  },
-];
+const errorHandler = (error, request, response, next) => {
+  console.log(error.message);
 
-app.get('/', (request, response) => {
-  const content = `<h1>Welcome to the phonebook backend </h1>`;
-  response.send(content);
-});
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'matformatted id' });
+  }
 
-app.get('/info', (reqeust, response) => {
-  const content = `<div> <p>Phonebook has record for ${
-    persons.length
-  } people</p> <div> ${new Date()} </div> 
-  </div>`;
+  next(error);
+};
 
-  response.send(content);
-});
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' });
+};
 
 app.get('/api/persons', (request, response) => {
-  response.json(persons);
+  Phone.find({}).then((person) => {
+    response.json(person);
+  });
 });
 
 app.get('/api/persons/:id', (request, response) => {
-  const id = +request.params.id;
-
-  const person = persons.find((person) => person.id === id);
-  const content = `<div> No such person with an id of ${id}
-  </div>`;
-
-  if (!person) {
-    return response.send(content);
-  }
-
-  response.json(person);
+  Phone.findById({ _id: request.params.id }).then((person) => {
+    response.json(person);
+  });
 });
 
 app.delete('/api/persons/:id', (request, response) => {
-  const id = +request.params.id;
-
-  persons = persons.filter((person) => person.id !== id);
-
-  response.status(204).end();
+  console.log(request.params.id);
+  Phone.findByIdAndDelete(request.params.id)
+    .then((result) => {
+      response.status(204).end();
+    })
+    .catch((error) => {
+      console.log(error);
+    });
 });
 
 app.post('/api/persons', (request, response) => {
-  const data = request.body;
-  const id = Math.random() * 1.4327;
-  data.id = id;
+  const body = request.body;
 
-  const checkIfExists = persons.find((person) => person.name === data.name);
+  const person = new Phone({
+    name: body.name,
+    number: Number(body.number),
+  });
 
-  if (checkIfExists) {
-    return response.send({ error: 'name must be unique' });
-  }
-
-  if (!data.name || !data.number) {
-    return response.status(404).end();
-  }
-
-  persons = [...persons, data];
-
-  response.json(data);
+  person
+    .save()
+    .then((result) => {
+      response.json(result);
+    })
+    .catch((error) => console.log(error));
 });
 
-const PORT = process.env.PORT || 3001;
+app.put('/api/persons/:id', (request, response) => {
+  const id = request.params.id;
+  const body = request.body;
+
+  const person = {
+    name: body.name,
+    number: Number(body.number),
+  };
+
+  Phone.findByIdAndUpdate(id, person, { new: true })
+    .then((updatedNote) => {
+      response.json(updatedNote);
+    })
+    .catch((error) => next(error));
+});
+
+app.use(errorHandler);
+app.use(unknownEndpoint);
+
+const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
   console.log(`listening on port ${PORT}`);
